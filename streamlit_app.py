@@ -1,6 +1,8 @@
 import streamlit as st
 import base64
 import requests
+import instaloader
+from datetime import datetime
 
 # Page configuration
 st.set_page_config(
@@ -46,6 +48,15 @@ def get_artist_data(artist_name, token):
             return data['artists']['items'][0]
     return None
 
+def get_instagram_followers_count(username):
+    try:
+        L = instaloader.Instaloader()
+        profile = instaloader.Profile.from_username(L.context, username)
+        return profile.followers
+    except Exception as e:
+        st.warning(f"Couldn't fetch Instagram followers automatically. Please enter manually.")
+        return None
+
 # Main app
 st.title("Artist Category Calculator 🎵")
 st.markdown("""
@@ -57,14 +68,19 @@ This app categorizes artists into A, B, or C levels based on:
 
 # User inputs
 artist_name = st.text_input('Enter artist name:', placeholder='e.g., Drake')
-instagram_followers = st.number_input('Enter Instagram followers count:', min_value=0, format='%d')
+instagram_username = st.text_input('Enter Instagram username:', placeholder='e.g., champagnepapi')
 
 if st.button('Calculate Category'):
-    if artist_name:
+    if artist_name and instagram_username:
         try:
             with st.spinner('Fetching artist data...'):
                 token = get_spotify_token()
                 artist_data = get_artist_data(artist_name, token)
+                
+                # Get Instagram followers automatically
+                instagram_followers = get_instagram_followers_count(instagram_username)
+                if instagram_followers is None:
+                    instagram_followers = st.number_input('Enter Instagram followers count manually:', min_value=0, format='%d')
                 
                 if artist_data:
                     spotify_popularity = artist_data['popularity']
