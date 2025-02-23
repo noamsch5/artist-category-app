@@ -45,7 +45,12 @@ def get_artist_data(artist_name, token):
     if response.status_code == 200:
         data = response.json()
         if data['artists']['items']:
-            return data['artists']['items'][0]
+            artist = data['artists']['items'][0]
+            # Try to get Instagram username from external URLs
+            instagram_url = artist.get('external_urls', {}).get('instagram', '')
+            if instagram_url:
+                artist['instagram_username'] = instagram_url.split('/')[-1]
+            return artist
     return None
 
 def get_instagram_followers_count(username):
@@ -68,23 +73,28 @@ This app categorizes artists into A, B, or C levels based on:
 
 # User inputs
 artist_name = st.text_input('Enter artist name:', placeholder='e.g., Drake')
-instagram_username = st.text_input('Enter Instagram username:', placeholder='e.g., champagnepapi')
 
 if st.button('Calculate Category'):
-    if artist_name and instagram_username:
+    if artist_name:
         try:
             with st.spinner('Fetching artist data...'):
                 token = get_spotify_token()
                 artist_data = get_artist_data(artist_name, token)
                 
-                # Get Instagram followers automatically
-                instagram_followers = get_instagram_followers_count(instagram_username)
-                if instagram_followers is None:
-                    instagram_followers = st.number_input('Enter Instagram followers count manually:', min_value=0, format='%d')
-                
                 if artist_data:
                     spotify_popularity = artist_data['popularity']
                     spotify_followers = artist_data['followers']['total']
+                    
+                    # Try to get Instagram username from artist data
+                    instagram_username = artist_data.get('instagram_username')
+                    if instagram_username:
+                        instagram_followers = get_instagram_followers_count(instagram_username)
+                    else:
+                        st.warning("Couldn't find Instagram username automatically")
+                        instagram_followers = st.number_input('Enter Instagram followers count manually:', min_value=0, format='%d')
+                    
+                    if instagram_followers is None:
+                        instagram_followers = st.number_input('Enter Instagram followers count manually:', min_value=0, format='%d')
                     
                     # Display results
                     st.success('Artist found!')
